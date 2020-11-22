@@ -1,0 +1,26 @@
+{
+    "name": "wablab-com/memory-table",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Ahmad Saleh",
+            "email": "ahmadfds@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "WabLab\\MemoryTable\\": "src/",
+            "Tests\\Factories\\": "tests/Factories/"
+        }
+    },
+
+    "description": "",
+    "require-dev": {
+        "phpunit/phpunit": "^7.5",
+        "wablab-com/tools": "1.0.0",
+        "fzaninotto/faker": "^1.9"
+    }
+}

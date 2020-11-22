@@ -1,0 +1,20 @@
+FROM ubuntu
+
+RUN apt-get -y update
+RUN apt -y install software-properties-common && add-apt-repository ppa:ondrej/php && apt-get update
+RUN apt -y install php7.4
+RUN apt -y install php7.4-mysql
+RUN apt-get -y install php7.4-xml
+RUN apt-get -y install php7.4-mbstring
+
+#
+# Install composer
+#
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+php composer-setup.php --install-dir=/usr/local/bin  --filename=composer && \
+php -r "unlink('composer-setup.php');"
+
+#
+# Install required packages
+#
+RUN apt-get -y install zip unzip
