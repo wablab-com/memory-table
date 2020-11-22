@@ -289,5 +289,38 @@ class TableTest extends TestCase
     }
 
 
+    public function testDeleteProcess() {
+        $table = TableFactory::createPersonTableWithIndexes();
+        TableFillerFactory::fillPersonTableObject($table, 100);
+        $table->deleteRow(['id' => 1]);
+        $this->assertEquals(99, $table->count());
+    }
+
+    public function testGetByIndex() {
+        $table = TableFactory::createPersonTableWithIndexes();
+
+        $table->insertRow([
+            'id' => 1,
+            'first_name' => 'Ahmad',
+            'last_name' => 'Saleh',
+            'address' => '',
+            'birth_date' => rand(time() - (60 * 60 * 24 * 365 * 90), time()),
+            'weight' => rand(50, 150)
+        ]);
+        $table->insertRow([
+            'id' => 2,
+            'first_name' => 'Ahmad',
+            'last_name' => 'Nabulsi',
+            'address' => '',
+            'birth_date' => rand(time() - (60 * 60 * 24 * 365 * 90), time()),
+            'weight' => rand(50, 150)
+        ]);
+
+        $this->assertEquals(2, count( $table->getByIndex('first_name_index', ['first_name' => 'Ahmad']) ) );
+        $this->assertEquals(1, count( $table->getByIndex('last_name_index',['last_name' => 'Saleh']) ) );
+        $this->assertEquals(1, count( $table->getByIndex('last_name_index',['last_name' => 'Nabulsi']) ) );
+        $this->assertEquals(0, count( $table->getByIndex('last_name_index',['last_name' => 'NoBody']) ) );
+
+    }
 
 }

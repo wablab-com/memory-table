@@ -225,6 +225,7 @@ class Table
         } else {
             throw new NoIndexAssigned("Table [{$this->getName()}] - Index [{$indexName}]");
         }
+        return [];
     }
 
     public function countByIndex(string $indexName, array $keyParams) {

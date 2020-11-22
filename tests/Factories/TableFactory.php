@@ -39,6 +39,7 @@ class TableFactory
         $lastNameIndex->addField($personTable->getField('last_name'));
 
         $personTable->addIndex($firstNameIndex);
+        $personTable->addIndex($lastNameIndex);
         return $personTable;
     }
 }
