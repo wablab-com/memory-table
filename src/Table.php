@@ -135,17 +135,19 @@ class Table
      * @throws AtLeastOneKeyMustBeAdded
      * @throws PrimaryKeyAlreadyExists
      */
-    public function insertRow(array $rawData)
+    public function insertRow(array $rawData, bool $ignoreIfExists = false, bool $ignoreCompute = false)
     {
         $pk = $this->generatePrimaryKey($rawData);
-        $data = $this->prepareRow($rawData);
+        $data = $this->prepareRow($rawData, $ignoreCompute);
 
         if(!isset($this->row[$pk])) {
             $this->row[$pk] = $data;
             $this->rowsCount = $this->rowsCount + 1;
             $this->linkWithIndexKeys($pk, $rawData);
         } else {
-            throw new PrimaryKeyAlreadyExists(json_encode($data));
+            if(!$ignoreIfExists) {
+                throw new PrimaryKeyAlreadyExists(json_encode($data));
+            }
         }
     }
 
@@ -155,17 +157,23 @@ class Table
      * @throws AtLeastOneKeyMustBeAdded
      * @throws NoMatchedRecordsCouldBeFound
      */
-    public function updateRow(array $keys,array $rawData) {
+    public function updateRow(array $keys,array $rawData, bool $ignoreIfNotExists = true, bool $ignoreCompute = false) {
         $pk = $this->generatePrimaryKey($keys);
 
         if(!isset($this->row[$pk])) {
-            throw new NoMatchedRecordsCouldBeFound('Key: '.json_encode($keys));
+            if(!$ignoreIfNotExists) {
+                throw new NoMatchedRecordsCouldBeFound('Key: '.json_encode($keys));
+            }
         } else {
             $rowBeforeChange = $this->row[$pk];
             foreach($this->fieldNames as $inx => $fieldName) {
                 if(isset($rawData[$fieldName]) ) {
                     $fieldTypeObj = $this->fields[$fieldName]->getType();
-                    $this->row[$pk][$inx] = $fieldTypeObj->handle($rawData[$fieldName]);;
+                    if($ignoreCompute && $fieldTypeObj instanceof ComputeFieldType) {
+                        $this->row[$pk][$inx] = $rawData[$fieldName];
+                    } else {
+                        $this->row[$pk][$inx] = $fieldTypeObj->handle($rawData[$fieldName]);
+                    }
                 }
             }
 
@@ -184,9 +192,9 @@ class Table
      * @param array $rawData
      * @throws AtLeastOneKeyMustBeAdded
      */
-    public function replaceRow(array $rawData) {
+    public function replaceRow(array $rawData, bool $ignoreCompute = false) {
         $pk = $this->generatePrimaryKey($rawData);
-        $data = $this->prepareRow($rawData);
+        $data = $this->prepareRow($rawData, $ignoreCompute);
 
         if(!isset($this->row[$pk])) {
             $this->rowsCount = $this->rowsCount + 1;
@@ -198,7 +206,7 @@ class Table
     }
 
 
-    public function deleteRow(array $pk) {
+    public function deleteRow(array $pk, bool $ignoreIfNotExists = true) {
         $pkHash = $this->generatePrimaryKey($pk);
 
         if(isset($this->row[$pkHash])) {
@@ -206,7 +214,9 @@ class Table
             unset($this->row[$pkHash]);
             $this->rowsCount--;
         } else {
-            throw new NoMatchedRecordsCouldBeFound("Table name [{$this->getName()}]");
+            if(!$ignoreIfNotExists) {
+                throw new NoMatchedRecordsCouldBeFound("Table name [{$this->getName()}]");
+            }
         }
     }
 
@@ -283,15 +293,33 @@ class Table
      * @return string
      */
     public function toJson():string {
-        return json_encode($this->row);
+        return json_encode($this->all());
     }
 
     /**
      * @param string $json
      */
-    public function fromJson(string $json) {
-        $this->row = json_decode($json, true);
-        $this->rowsCount = count($this->row);
+    public function fromJson(string $json, $ignoreIfExists = false) {
+        $jsonRows = json_decode($json, true);
+        foreach($jsonRows as $row) {
+            $this->insertRow($row, $ignoreIfExists, true);
+        }
+    }
+
+    /**
+     * @param resource $stream
+     */
+    public function toJsonStream($stream) {
+        fwrite($stream, '[');
+        $counter = 0;
+        foreach ($this->row as $row) {
+            $counter++;
+            fwrite($stream, json_encode($this->combineDataWithFieldNames($row)) );
+            if($counter < $this->rowsCount) {
+                fwrite($stream, ',' );
+            }
+        }
+        fwrite($stream, ']');
     }
 
     /**
@@ -340,11 +368,13 @@ class Table
      * @param array $rawData
      * @return array
      */
-    protected function &prepareRow(array &$rawData) {
+    protected function &prepareRow(array &$rawData, $ignoreCompute = false) {
         $toReturn = [];
         // prepare
         foreach($this->fields as $fieldName => $field) {
-            if($field->getType() instanceof ComputeFieldType && empty($rawData[$fieldName]) ) {
+            if($ignoreCompute && $field->getType() instanceof ComputeFieldType) {
+                $toReturn[] = $rawData[$fieldName] ?? null;
+            } elseif($field->getType() instanceof ComputeFieldType && empty($rawData[$fieldName]) ) {
                 $toReturn[] = $field->getType()->handle($rawData);
             } else {
                 $toReturn[] = $field->getType()->handle($rawData[$fieldName] ?? null);

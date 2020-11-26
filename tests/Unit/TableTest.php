@@ -11,6 +11,7 @@ use WabLab\MemoryTable\Exception\ComputeFieldCannotBeUsedAsKey;
 use WabLab\MemoryTable\Exception\FieldNameAlreadyDeclared;
 use WabLab\MemoryTable\Exception\IndexAlreadyAssigned;
 use WabLab\MemoryTable\Exception\IndexFieldDoesNotMatchWithTableFields;
+use WabLab\MemoryTable\Exception\NoIndexAssigned;
 use WabLab\MemoryTable\Exception\NoMatchedRecordsCouldBeFound;
 use WabLab\MemoryTable\Exception\PrimaryKeyAlreadyExists;
 use WabLab\MemoryTable\Field;
@@ -118,10 +119,20 @@ class TableTest extends TestCase
         }
     }
 
-    public function testNoMatchedRecordsCouldBeFound() {
+    public function testNoMatchedRecordsCouldBeFoundOnUpdate() {
         $table = TableFactory::createPersonTableObject();
         try {
-            $table->updateRow(['id' => 3], ['first_name' => 'Ahmad']);
+            $table->updateRow(['id' => 3], ['first_name' => 'Ahmad'], false);
+            throw new \Exception('No errors');
+        } catch (\Throwable $exception) {
+            $this->assertInstanceOf(NoMatchedRecordsCouldBeFound::class, $exception);
+        }
+    }
+
+    public function testNoMatchedRecordsCouldBeFoundOnDelete() {
+        $table = TableFactory::createPersonTableObject();
+        try {
+            $table->deleteRow(['id' => 3], false);
             throw new \Exception('No errors');
         } catch (\Throwable $exception) {
             $this->assertInstanceOf(NoMatchedRecordsCouldBeFound::class, $exception);
@@ -321,6 +332,39 @@ class TableTest extends TestCase
         $this->assertEquals(1, count( $table->getByIndex('last_name_index',['last_name' => 'Nabulsi']) ) );
         $this->assertEquals(0, count( $table->getByIndex('last_name_index',['last_name' => 'NoBody']) ) );
 
+    }
+
+    public function testNoIndexAssignedInGetByIndex() {
+        $table = TableFactory::createPersonTableWithIndexes();
+        try {
+            $table->getByIndex('invalid_index_name', ['id' => 'any value']);
+            throw new \Exception('No errors');
+        } catch (\Throwable $exception) {
+            $this->assertInstanceOf(NoIndexAssigned::class, $exception);
+        }
+
+    }
+
+    public function testNoIndexAssignedInCountByIndex() {
+        $table = TableFactory::createPersonTableWithIndexes();
+        try {
+            $table->countByIndex('invalid_index_name', ['id' => 'any value']);
+            throw new \Exception('No errors');
+        } catch (\Throwable $exception) {
+            $this->assertInstanceOf(NoIndexAssigned::class, $exception);
+        }
+    }
+
+    public function testUpdateComputeField() {
+        $table = TableFactory::createPersonTableWithIndexes();
+        TableFillerFactory::fillPersonTableObject($table, 100);
+        $table->updateRow(['id' => 1], ['age' => 200], false, true);
+        $this->assertEquals(200, $table->find(['id' => 1])['age']);
+    }
+
+    public function testGetInvalidField() {
+        $table = TableFactory::createPersonTableWithIndexes();
+        $this->assertNull($table->getField('invalid_field_name'));
     }
 
 }

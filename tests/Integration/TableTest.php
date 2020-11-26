@@ -15,7 +15,6 @@ class TableTest extends TestCase
         $this->setOutputCallback(function() {});
     }
 
-
     public function testTableToJson() {
         $table = TableFactory::createPersonTableObject();
 
@@ -30,6 +29,23 @@ class TableTest extends TestCase
         $table = TableFactory::createPersonTableObject();
         $table->fromJson(file_get_contents('/tmp/table_test_output.json'));
         $this->assertEquals(100, $table->count());
+    }
+
+    public function testTableToJsonStream() {
+        $table = TableFactory::createPersonTableObject();
+
+        $recordsToAdd = 100;
+        TableFillerFactory::fillPersonTableObject($table, $recordsToAdd);
+
+        $outputFilePath = '/tmp/table_test_output_stream.json';
+        $fp = fopen($outputFilePath, 'w+');
+        $table->toJsonStream($fp);
+        fclose($fp);
+
+        $this->assertFileExists($outputFilePath);
+
+        $rows = json_decode(file_get_contents($outputFilePath), true);
+        $this->assertEquals(100, count($rows));
     }
 
 }

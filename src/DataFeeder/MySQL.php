@@ -3,6 +3,8 @@
 namespace WabLab\MemoryTable\DataFeeder;
 
 
+use WabLab\MemoryTable\Table;
+
 class MySQL
 {
     /**
@@ -23,15 +25,11 @@ class MySQL
                 $limitQuery = "LIMIT {$offset}, {$batchSize}";
             }
             $handler = $this->connection->query("$query {$limitQuery}");
-            echo "\nFetching from database:";
             $rows = $handler->fetchAll(\PDO::FETCH_ASSOC);
-            echo "\nOffset: {$offset}, Batch Size: {$batchSize}\n";
-            $startTime = time();
             foreach($rows as &$row) {
-                $table->insertRow($row);
+                $table->insertRow($row, true);
             }
             $offset += $batchSize;
-            echo "Finished in ".(time() - $startTime)." seconds\n";
         } while($batchSize && count($rows));
 
     }
